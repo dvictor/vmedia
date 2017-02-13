@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<head>
+<title>Home Media</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<link rel="shortcut icon" href="/static/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="red">
+<meta name="theme-color" content="#ff0000" />
+
+<link href='https://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
+<script src=https://code.jquery.com/jquery-2.2.4.min.js></script>
+<script src=static/jquery.ba-throttle-debounce.min.js></script>
+    <style>
+        body {
+            font-family: open sans;
+        	margin: 0
+        }
+        #controls {
+            padding: 20px;
+        }
+        #volume {
+            display: block;
+            margin-top: 20px;
+            width: 100%;
+        }
+        #icy_info {
+		    position: absolute;
+		    left: 0;
+		    right: 0;
+		    bottom: 0;
+		    padding: 20px;
+		    background: linear-gradient(#ff9999, #ff0000);
+		    color: #fff;
+		    font-weight: bold;
+		    overflow: hidden;
+		    height: 22px;
+		    white-space: nowrap;
+		    text-overflow: ellipsis;
+    	}
+        #scrub {
+            position: absolute;
+            bottom: 0; left: 0; width: 30%;
+            background: white;
+            height: 2px;
+        }
+        select, input[type=button], button{
+            height: 35px;
+		    border: none;
+		    background: #ff5757;
+		    color: #fff;
+		    margin-bottom: 20px;
+		    outline: none;
+		    min-width: 58px;
+		    font-weight: bold;
+            padding: 6px;
+        }
+        #station {
+            width: 100%;
+        }
+        input[type=text] {
+            border: solid 1px #ccc;
+            padding: 9px;
+            background: #fff;
+        }
+        #downloads {
+            border-left: solid 1px #999;
+            white-space: pre-wrap;
+            padding-left: 10px;
+        }
+
+        .tabs {
+        	border-bottom: solid 1px #ccc;
+        }
+        .tabs > div {
+        	display: inline-block;
+		    padding: 8px 14px;
+		    background: #fff;
+		    margin-bottom: -1px;
+		    cursor: default;
+        }
+        .tabs > div.active {
+		    border-bottom: solid 1px #000;
+        }
+        .tabs-cont {
+        	position: absolute; top:43px; left:0; right:0; bottom:0; overflow: auto;
+        }
+        .tabs-cont > div {
+        	display: none;
+        }
+        .tabs-cont > div > div {
+        	padding: 7px;
+		    font-size: 14px;
+		    position: relative;
+		    border-left: solid 3px red;
+		    margin-top: 3px;
+		    padding-right: 35px;
+		    overflow: hidden;
+		    text-overflow: ellipsis;
+		    white-space: nowrap;
+		    cursor: default;
+        }
+        .tabs-cont > div > div.active {
+        	color: #fff;
+        	background: #ff5757;
+        }
+        .del {
+	        position: absolute;
+		    top: 4px;
+		    right: 4px;
+		    border-radius: 14px;
+		    background: #ff5757;
+		    padding: 3px 8px;
+		    color: #fff;
+		    line-height: 1.3;
+		    cursor: pointer;
+        }
+
+    </style>
+</head>
+
+<div id=controls>
+    <input id=volume type=range min=0 max=100 oninput="playerAction('volume', this.value)"><br>
+    <!-- select id=station onchange="playerAction('station', this.value)"></select><br -->
+    <button onclick='playerAction("play")'><i class="material-icons">play_arrow</i></button>
+    <button onclick='playerAction("pause")'><i class="material-icons">pause</i></button>
+    <button onclick='playerAction("stop")'><i class="material-icons">stop</i></button>
+
+    <button onclick='playerAction("bw")'><i class="material-icons">fast_rewind</i></button>
+    <button onclick='playerAction("fw")'><i class="material-icons">fast_forward</i></button>
+    <br>
+    <div id="dl" style="position:relative">
+    	<div style="margin-right:83px"><input type="text" style="width:100%" id="url" autocomplete="off"></div>
+    	<input type=button value="add" onclick='addYoutube()' style="position:absolute; top:0; right:0">
+    </div>
+</div>
+<div style="position:absolute; top: 200px; right:0; left:0; bottom: 62px">
+    <div class="tabs">
+    	<div>Radio</div>
+    	<div>Files</div>
+    	<div>Pending</div>
+    </div>
+    <div class="tabs-cont">
+    	<div id="stations"></div>
+    	<div id="files"></div>
+    	<div id="downloads"></div>
+	</div>
+</div>
+<div id=icy_info></div>
+<div id=scrub></div>
+<script>
+    var stop_refresh = false;
+    var tid = 0;
+    var list_version = -1;
+    function refresh() {
+        $.get('?data=1', function(ret) {
+            //console.log(ret);
+            list_version = ret.list_version;
+
+            $('#stations').empty().append(ret.stations.map(function(name, i) {
+                return $('<div/>').attr('data-id', i).text(name);
+            }));
+
+            $('#files').empty().append(ret.files.map(function(name, i) {
+                return $('<div/>').attr('data-id', i + ret.stations.length).text(name).append($('<span class=del/>').text('x'));
+            }));
+
+            $('.tabs-cont [data-id='+ret.crt+']').addClass('active');
+
+
+            $('#icy_info').text(ret.icy_info);
+            $('#volume').val(ret.volume);
+            $('#downloads').text(ret.downloads)
+        });
+    }
+    $(refresh);
+    $(refreshInfo);
+    function refreshInfo() {
+        clearTimeout(tid);
+        $.get('?info=1&t='+Date.now(), function(ret) {
+            //console.log('info')
+            if ($('#icy_info').text() != ret['info'])
+                $('#icy_info').text(ret['info']);
+            if (ret.list_version != list_version)
+            	refresh()
+            if (ret.pos == null) ret.pos = 0;
+            $('#scrub').css({width: ret.pos + '%'})
+
+            clearTimeout(tid);
+            if (stop_refresh) return;
+            tid = setTimeout(refreshInfo, 2000);
+        });
+    }
+
+    var playerAction = $.debounce(100, function (action, value, callback) {
+        $.post('?', {action: action, value: value}, callback);
+        if (action == 'fw' || action == 'bw')
+            refreshInfo();
+    });
+
+    $('.tabs > div').click(function () {
+  	    setTab($(this).index());
+    });
+    function setTab(i) {
+  	    localStorage.crtTab = i;
+    	$('.tabs > div').removeClass('active');
+    	$('.tabs-cont>div').hide();
+	    $('.tabs-cont>div').eq(i).show();
+	    $('.tabs>div').eq(i).addClass('active');
+	}
+    setTab(localStorage.crtTab || 0);
+
+    $('#files, #stations').on('click', '>div', function (e) {
+    	var id = $(this).attr('data-id')
+    	if ($(e.target).is('.del')) {
+    		playerAction('del', id, refresh);
+    		var $item = $(this);
+    		$item.animate({width:'toggle'}, 300, function () {
+    			$item.remove();
+    		});
+    		return;
+    	}
+    	$('.tabs-cont [data-id]').removeClass('active');
+    	$(this).addClass('active');
+    	playerAction('station', id);
+    });
+
+
+    function addYoutube() {
+        playerAction('download', $('#url').val(), refresh)
+        $('#url').val('');
+        setTab(2);
+    }
+
+
+    window.addEventListener('focus', function(e) {
+        //console.log('focus');
+        stop_refresh = false;
+        refreshInfo();
+    })
+    window.addEventListener('blur', function(e) {
+        //console.log('blur');
+        stop_refresh = true;
+        clearTimeout(tid);
+    })
+</script>
