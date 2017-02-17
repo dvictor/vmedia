@@ -11,7 +11,6 @@ import threading
 from Queue import Queue
 
 
-call(['killall', 'mplayer'])
 
 stations = [
     ('Guerrilla (RO)', 'http://live.guerrillaradio.ro:8010/guerrilla.aac'),
@@ -37,13 +36,18 @@ def refresh_file_list():
     file_list[:] = []
     for fname in sorted(os.listdir('../yt/')):
         file_list.append((fname[:-5], '../yt/'+fname))
-    file_list_version += 1
+    file_list_version += 1 
 
 refresh_file_list()
 
 current_station = 0
+p = None
+def restart_player():
+    global p
+    call(['killall', 'mplayer'])
+    p = mplayer.Player(args=('-ao', 'alsa:device=hw=1.0')) 
 
-p = mplayer.Player(args=('-ao', 'alsa:device=hw=1.0'))
+restart_player()
 volume = 20
 icy_info = ''
 
@@ -52,7 +56,7 @@ queue = Queue()
 def download_task():
 	while True:
 		url = queue.get()
-		call(['/usr/local/bin/youtube-dl', '--extract-audio', url, '-o', '../yt/%(title)s-%(id)s.%(ext)s'])
+		call(['/usr/local/bin/youtube-dl', '--extract-audio', '--no-playlist', url, '-o', '../yt/%(title)s-%(id)s.%(ext)s'])
 		print 'done'
 		downloads.pop()
 		queue.task_done()
@@ -64,6 +68,7 @@ t.start()
 
 
 def log(data):
+    data = data.encode('utf8')
     if data.startswith('ICY'):
         global icy_info
         icy_info = data[data.index('=')+1:data.index(';')].strip("'")
@@ -142,6 +147,8 @@ class MainHandler(tornado.web.RequestHandler):
                 fh.write('DEL:' + file_name + '\n')
             os.remove(file_name)
             refresh_file_list()
+        elif action == 'restart':
+            restart_player()
 
 class TempHandler(tornado.web.RequestHandler):
     def get(self):

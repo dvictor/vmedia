@@ -52,14 +52,14 @@
 		    color: #fff;
 		    margin-bottom: 20px;
 		    outline: none;
-		    min-width: 58px;
+		    min-width: 47px;
 		    font-weight: bold;
             padding: 6px;
         }
         #station {
             width: 100%;
         }
-        input[type=text] {
+        input[type=text], input[type=search] {
             border: solid 1px #ccc;
             padding: 9px;
             background: #fff;
@@ -123,6 +123,7 @@
 <div id=controls>
     <input id=volume type=range min=0 max=100 oninput="playerAction('volume', this.value)"><br>
     <!-- select id=station onchange="playerAction('station', this.value)"></select><br -->
+    <button style="float:right" onclick='playerAction("restart")'>K</button>
     <button onclick='playerAction("play")'><i class="material-icons">play_arrow</i></button>
     <button onclick='playerAction("pause")'><i class="material-icons">pause</i></button>
     <button onclick='playerAction("stop")'><i class="material-icons">stop</i></button>
@@ -141,6 +142,7 @@
     	<div>Files</div>
     	<div>Pending</div>
     </div>
+    <div><input type="search" id="search" style="position:absolute; top:4px; right: 0; width:40%"></div>
     <div class="tabs-cont">
     	<div id="stations"></div>
     	<div id="files"></div>
@@ -225,6 +227,16 @@
     	$(this).addClass('active');
     	playerAction('station', id);
     });
+
+    $(function() {
+        $('#search').on('input', function () {
+            var txt = $(this).val().toLowerCase();
+            $('#files > div, #stations > div').each(function () {
+                var b = txt == '' || $(this).text().toLowerCase().indexOf(txt) != -1;
+                $(this)[b ? 'show' : 'hide']();
+            })
+        })
+    })
 
 
     function addYoutube() {
