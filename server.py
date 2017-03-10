@@ -152,7 +152,7 @@ class MainHandler(tornado.web.RequestHandler):
 
 class TempHandler(tornado.web.RequestHandler):
     def get(self):
-	self.write('<h1>{}&deg;</h1>'.format(float(os.popen('~/temperature.sh').read())/1000))
+	self.write('<h1>{}&deg;</h1>'.format(float(os.popen('./temperature.sh').read())/1000))
 
 
 
